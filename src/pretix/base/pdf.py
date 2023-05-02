@@ -46,7 +46,6 @@ import uuid
 from collections import OrderedDict
 from functools import partial
 from io import BytesIO
-from zoneinfo import ZoneInfo
 
 import jsonschema
 from arabic_reshaper import ArabicReshaper
@@ -239,7 +238,7 @@ DEFAULT_VARIABLES = OrderedDict((
         "label": _("Event begin date and time"),
         "editor_sample": _("2017-05-31 20:00"),
         "evaluate": lambda op, order, ev: date_format(
-            ev.date_from.astimezone(ZoneInfo(ev.settings.timezone)),
+            ev.date_from.astimezone(ev.timezone),
             "SHORT_DATETIME_FORMAT"
         ) if ev.date_from else ""
     }),
@@ -247,7 +246,7 @@ DEFAULT_VARIABLES = OrderedDict((
         "label": _("Event begin date"),
         "editor_sample": _("2017-05-31"),
         "evaluate": lambda op, order, ev: date_format(
-            ev.date_from.astimezone(ZoneInfo(ev.settings.timezone)),
+            ev.date_from.astimezone(ev.timezone),
             "SHORT_DATE_FORMAT"
         ) if ev.date_from else ""
     }),
@@ -265,7 +264,7 @@ DEFAULT_VARIABLES = OrderedDict((
         "label": _("Event end date and time"),
         "editor_sample": _("2017-05-31 22:00"),
         "evaluate": lambda op, order, ev: date_format(
-            ev.date_to.astimezone(ZoneInfo(ev.settings.timezone)),
+            ev.date_to.astimezone(ev.timezone),
             "SHORT_DATETIME_FORMAT"
         ) if ev.date_to else ""
     }),
@@ -273,7 +272,7 @@ DEFAULT_VARIABLES = OrderedDict((
         "label": _("Event end date"),
         "editor_sample": _("2017-05-31"),
         "evaluate": lambda op, order, ev: date_format(
-            ev.date_to.astimezone(ZoneInfo(ev.settings.timezone)),
+            ev.date_to.astimezone(ev.timezone),
             "SHORT_DATE_FORMAT"
         ) if ev.date_to else ""
     }),
@@ -281,7 +280,7 @@ DEFAULT_VARIABLES = OrderedDict((
         "label": _("Event end time"),
         "editor_sample": _("22:00"),
         "evaluate": lambda op, order, ev: date_format(
-            ev.date_to.astimezone(ZoneInfo(ev.settings.timezone)),
+            ev.date_to.astimezone(ev.timezone),
             "TIME_FORMAT"
         ) if ev.date_to else ""
     }),
@@ -294,7 +293,7 @@ DEFAULT_VARIABLES = OrderedDict((
         "label": _("Event admission date and time"),
         "editor_sample": _("2017-05-31 19:00"),
         "evaluate": lambda op, order, ev: date_format(
-            ev.date_admission.astimezone(ZoneInfo(ev.settings.timezone)),
+            ev.date_admission.astimezone(ev.timezone),
             "SHORT_DATETIME_FORMAT"
         ) if ev.date_admission else ""
     }),
@@ -302,7 +301,7 @@ DEFAULT_VARIABLES = OrderedDict((
         "label": _("Event admission time"),
         "editor_sample": _("19:00"),
         "evaluate": lambda op, order, ev: date_format(
-            ev.date_admission.astimezone(ZoneInfo(ev.settings.timezone)),
+            ev.date_admission.astimezone(ev.timezone),
             "TIME_FORMAT"
         ) if ev.date_admission else ""
     }),
@@ -387,7 +386,7 @@ DEFAULT_VARIABLES = OrderedDict((
         "label": _("Printing date"),
         "editor_sample": _("2017-05-31"),
         "evaluate": lambda op, order, ev: date_format(
-            now().astimezone(ZoneInfo(ev.settings.timezone)),
+            now().astimezone(ev.timezone),
             "SHORT_DATE_FORMAT"
         )
     }),
@@ -395,7 +394,7 @@ DEFAULT_VARIABLES = OrderedDict((
         "label": _("Printing date and time"),
         "editor_sample": _("2017-05-31 19:00"),
         "evaluate": lambda op, order, ev: date_format(
-            now().astimezone(ZoneInfo(ev.settings.timezone)),
+            now().astimezone(ev.timezone),
             "SHORT_DATETIME_FORMAT"
         )
     }),
@@ -403,7 +402,7 @@ DEFAULT_VARIABLES = OrderedDict((
         "label": _("Printing time"),
         "editor_sample": _("19:00"),
         "evaluate": lambda op, order, ev: date_format(
-            now().astimezone(ZoneInfo(ev.settings.timezone)),
+            now().astimezone(ev.timezone),
             "TIME_FORMAT"
         )
     }),
@@ -411,7 +410,7 @@ DEFAULT_VARIABLES = OrderedDict((
         "label": _("Validity start date"),
         "editor_sample": _("2017-05-31"),
         "evaluate": lambda op, order, ev: date_format(
-            op.valid_from.astimezone(timezone(ev.settings.timezone)),
+            op.valid_from.astimezone(ev.timezone),
             "SHORT_DATE_FORMAT"
         ) if op.valid_from else ""
     }),
@@ -419,7 +418,7 @@ DEFAULT_VARIABLES = OrderedDict((
         "label": _("Validity start date and time"),
         "editor_sample": _("2017-05-31 19:00"),
         "evaluate": lambda op, order, ev: date_format(
-            op.valid_from.astimezone(timezone(ev.settings.timezone)),
+            op.valid_from.astimezone(ev.timezone),
             "SHORT_DATETIME_FORMAT"
         ) if op.valid_from else ""
     }),
@@ -427,7 +426,7 @@ DEFAULT_VARIABLES = OrderedDict((
         "label": _("Validity start time"),
         "editor_sample": _("19:00"),
         "evaluate": lambda op, order, ev: date_format(
-            op.valid_from.astimezone(timezone(ev.settings.timezone)),
+            op.valid_from.astimezone(ev.timezone),
             "TIME_FORMAT"
         ) if op.valid_from else ""
     }),
@@ -435,7 +434,7 @@ DEFAULT_VARIABLES = OrderedDict((
         "label": _("Validity end date"),
         "editor_sample": _("2017-05-31"),
         "evaluate": lambda op, order, ev: date_format(
-            op.valid_until.astimezone(timezone(ev.settings.timezone)),
+            op.valid_until.astimezone(ev.timezone),
             "SHORT_DATE_FORMAT"
         ) if op.valid_until else ""
     }),
@@ -443,7 +442,7 @@ DEFAULT_VARIABLES = OrderedDict((
         "label": _("Validity end date and time"),
         "editor_sample": _("2017-05-31 19:00"),
         "evaluate": lambda op, order, ev: date_format(
-            op.valid_until.astimezone(timezone(ev.settings.timezone)),
+            op.valid_until.astimezone(ev.timezone),
             "SHORT_DATETIME_FORMAT"
         ) if op.valid_until else ""
     }),
@@ -451,7 +450,7 @@ DEFAULT_VARIABLES = OrderedDict((
         "label": _("Validity end time"),
         "editor_sample": _("19:00"),
         "evaluate": lambda op, order, ev: date_format(
-            op.valid_until.astimezone(timezone(ev.settings.timezone)),
+            op.valid_until.astimezone(ev.timezone),
             "TIME_FORMAT"
         ) if op.valid_until else ""
     }),
