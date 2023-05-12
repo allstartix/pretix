@@ -1143,7 +1143,7 @@ class GiftcardTransactionListExporter(OrganizerLevelExportMixin, ListExporter):
     def iterate_list(self, form_data):
         qs = GiftCardTransaction.objects.filter(
             card__issuer=self.organizer,
-        ).order_by('datetime').select_related('card', 'order', 'order__event')
+        ).order_by('datetime').select_related('card', 'order', 'order__event', 'acceptor')
 
         if form_data.get('date_range'):
             dt_start, dt_end = resolve_timeframe_to_datetime_start_inclusive_end_exclusive(now(), form_data['date_range'], self.timezone)
@@ -1159,6 +1159,7 @@ class GiftcardTransactionListExporter(OrganizerLevelExportMixin, ListExporter):
             _('Amount'),
             _('Currency'),
             _('Order'),
+            _('Organizer'),
         ]
         yield headers
 
@@ -1170,6 +1171,7 @@ class GiftcardTransactionListExporter(OrganizerLevelExportMixin, ListExporter):
                 obj.value,
                 obj.card.currency,
                 obj.order.full_code if obj.order else None,
+                str(obj.acceptor or ""),
             ]
             yield row
 
