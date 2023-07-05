@@ -76,10 +76,10 @@
         <link rel="apple-touch-icon" sizes="180x180" href="{% static "pretixbase/img/icons/apple-touch-icon.png" %}">
         <link rel="icon" type="image/png" sizes="192x192" href="{% static "pretixbase/img/icons/android-chrome-192x192.png" %}">
         <link rel="manifest" href="{% url "presale:site.webmanifest" %}">
-        <link rel="mask-icon" href="{% static "pretixbase/img/icons/safari-pinned-tab.svg" %}" color="#3b1c4a">
-        <meta name="msapplication-TileColor" content="#3b1c4a">
+        <link rel="mask-icon" href="{% static "pretixbase/img/icons/safari-pinned-tab.svg" %}" color="#213675">
+        <meta name="msapplication-TileColor" content="#213675">
         <meta name="msapplication-config" content="{% url "presale:browserconfig.xml" %}">
-        <meta name="theme-color" content="#3b1c4a">
+        <meta name="theme-color" content="#213675">
         <meta name="referrer" content="origin">
 
         {% block custom_header %}{% endblock %}
@@ -403,8 +403,8 @@
                         <div class="alert alert-info">
                             <a href="{% url "control:global.update" %}">
                                 {% blocktrans trimmed %}
-                                    Starting with version 1.2.0, pretix automatically checks for updates in the background.
-                                    During this check, anonymous data is transmitted to servers operated by pretix'
+                                    Starting with version 1.2.0, AllstarTix automatically checks for updates in the background.
+                                    During this check, anonymous data is transmitted to servers operated by AllstarTix'
                                     developers. Click on this message to find out more, disable this feature or enter your
                                     email address to get notified via email if a new update arrives. This message will
                                     disappear once you clicked it.
@@ -416,8 +416,8 @@
                         <div class="alert alert-legal">
                             <a href="{% url "control:global.license" %}">
                                 {% blocktrans trimmed %}
-                                    Click here to do a license compliance check to make sure your usage of pretix is in
-                                    line with pretix' license.
+                                    Click here to do a license compliance check to make sure your usage of AllstarTix is in
+                                    line with AllstarTix' license.
                                 {% endblocktrans %}
                             </a>
                         </div>
@@ -425,7 +425,7 @@
 
                     {% if debug_warning %}
                         <div class="alert alert-danger">
-                            {% trans "pretix is running in debug mode. For security reasons, please never run debug mode on a production instance." %}
+                            {% trans "AllstarTix is running in debug mode. For security reasons, please never run debug mode on a production instance." %}
                         </div>
                     {% endif %}
 
@@ -447,7 +447,7 @@
                                 Times displayed in {{ tz }}
                             {% endblocktrans %} &middot;
                         {% endif %}
-                        {{ poweredby }} {# removing or hiding this might be in violation of pretix' license #}
+                        {{ poweredby }} {# removing or hiding this might be in violation of AllstarTix' license #}
                         {% if development_warning %}
                             <span class="text-warning">&middot; {% trans "running in development mode" %}</span>
                         {% endif %}
