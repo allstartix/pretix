@@ -63,7 +63,9 @@ from pretix.base.forms.questions import (
     NamePartsFormField, WrappedPhoneNumberPrefixWidget, get_country_by_locale,
     get_phone_prefix,
 )
-from pretix.base.forms.widgets import SplitDateTimePickerWidget
+from pretix.base.forms.widgets import (
+    SplitDateTimePickerWidget, format_placeholders_help_text,
+)
 from pretix.base.models import (
     Customer, Device, EventMetaProperty, Gate, GiftCard, GiftCardAcceptance,
     Membership, MembershipType, OrderPosition, Organizer, ReusableMedium, Team,
@@ -412,11 +414,15 @@ class OrganizerSettingsForm(SettingsForm):
         'reusable_media_type_nfc_uid',
         'reusable_media_type_nfc_uid_autocreate_giftcard',
         'reusable_media_type_nfc_uid_autocreate_giftcard_currency',
+        'reusable_media_type_nfc_mf0aes',
+        'reusable_media_type_nfc_mf0aes_autocreate_giftcard',
+        'reusable_media_type_nfc_mf0aes_autocreate_giftcard_currency',
+        'reusable_media_type_nfc_mf0aes_random_uid',
     ]
 
     organizer_logo_image = ExtFileField(
         label=_('Header image'),
-        ext_whitelist=(".png", ".jpg", ".gif", ".jpeg"),
+        ext_whitelist=settings.FILE_UPLOAD_EXTENSIONS_IMAGE,
         max_size=settings.FILE_UPLOAD_MAX_SIZE_IMAGE,
         required=False,
         help_text=_('If you provide a logo image, we will by default not show your organization name '
@@ -426,7 +432,7 @@ class OrganizerSettingsForm(SettingsForm):
     )
     favicon = ExtFileField(
         label=_('Favicon'),
-        ext_whitelist=(".ico", ".png", ".jpg", ".gif", ".jpeg"),
+        ext_whitelist=settings.FILE_UPLOAD_EXTENSIONS_FAVICON,
         required=False,
         max_size=settings.FILE_UPLOAD_MAX_SIZE_FAVICON,
         help_text=_('If you provide a favicon, we will show it instead of the default pretix icon. '
@@ -564,19 +570,14 @@ class MailSettingsForm(SettingsForm):
         return placeholders
 
     def _set_field_placeholders(self, fn, base_parameters):
-        phs = [
-            '{%s}' % p
-            for p in sorted(self._get_sample_context(base_parameters).keys())
-        ]
-        ht = _('Available placeholders: {list}').format(
-            list=', '.join(phs)
-        )
+        placeholders = self._get_sample_context(base_parameters)
+        ht = format_placeholders_help_text(placeholders)
         if self.fields[fn].help_text:
             self.fields[fn].help_text += ' ' + str(ht)
         else:
             self.fields[fn].help_text = ht
         self.fields[fn].validators.append(
-            PlaceholderValidator(phs)
+            PlaceholderValidator(['{%s}' % p for p in placeholders.keys()])
         )
 
     def __init__(self, *args, **kwargs):

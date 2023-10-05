@@ -114,7 +114,32 @@ elif 'mysql' in db_backend:
     print("pretix does no longer support running on MySQL/MariaDB")
     sys.exit(1)
 
+DATABASE_ADVISORY_LOCK_INDEX = config.getint('database', 'advisory_lock_index', fallback=0)
+
 db_options = {}
+
+postgresql_sslmode = config.get('database', 'sslmode', fallback='disable')
+USE_DATABASE_TLS = postgresql_sslmode != 'disable'
+USE_DATABASE_MTLS = USE_DATABASE_TLS and config.has_option('database', 'sslcert')
+
+if USE_DATABASE_TLS or USE_DATABASE_MTLS:
+    tls_config = {}
+    if not USE_DATABASE_MTLS:
+        if 'postgresql' in db_backend:
+            tls_config = {
+                'sslmode': config.get('database', 'sslmode'),
+                'sslrootcert': config.get('database', 'sslrootcert'),
+            }
+    else:
+        if 'postgresql' in db_backend:
+            tls_config = {
+                'sslmode': config.get('database', 'sslmode'),
+                'sslrootcert': config.get('database', 'sslrootcert'),
+                'sslcert': config.get('database', 'sslcert'),
+                'sslkey': config.get('database', 'sslkey'),
+            }
+
+    db_options.update(tls_config)
 
 DATABASES = {
     'default': {
@@ -165,13 +190,13 @@ if SITE_URL.endswith('/'):
 
 CSRF_TRUSTED_ORIGINS = [urlparse(SITE_URL).scheme + '://' + urlparse(SITE_URL).hostname]
 
-TRUST_X_FORWARDED_FOR = config.get('pretix', 'trust_x_forwarded_for', fallback=False)
-USE_X_FORWARDED_HOST = config.get('pretix', 'trust_x_forwarded_host', fallback=False)
+TRUST_X_FORWARDED_FOR = config.getboolean('pretix', 'trust_x_forwarded_for', fallback=False)
+USE_X_FORWARDED_HOST = config.getboolean('pretix', 'trust_x_forwarded_host', fallback=False)
 
 
 REQUEST_ID_HEADER = config.get('pretix', 'request_id_header', fallback=False)
 
-if config.get('pretix', 'trust_x_forwarded_proto', fallback=False):
+if config.getboolean('pretix', 'trust_x_forwarded_proto', fallback=False):
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 PRETIX_PLUGINS_DEFAULT = config.get('pretix', 'plugins_default',
@@ -228,6 +253,9 @@ if HAS_MEMCACHED:
 
 HAS_REDIS = config.has_option('redis', 'location')
 USE_REDIS_SENTINEL = config.has_option('redis', 'sentinels')
+redis_ssl_cert_reqs = config.get('redis', 'ssl_cert_reqs', fallback='none')
+USE_REDIS_TLS = redis_ssl_cert_reqs != 'none'
+USE_REDIS_MTLS = USE_REDIS_TLS and config.has_option('redis', 'ssl_certfile')
 HAS_REDIS_PASSWORD = config.has_option('redis', 'password')
 if HAS_REDIS:
     OPTIONS = {
@@ -242,6 +270,29 @@ if HAS_REDIS:
         # See https://github.com/jazzband/django-redis/issues/540
         OPTIONS["SENTINEL_KWARGS"] = {"socket_timeout": 1}
         OPTIONS["SENTINELS"] = [tuple(sentinel) for sentinel in loads(config.get('redis', 'sentinels'))]
+
+    if USE_REDIS_TLS or USE_REDIS_MTLS:
+        tls_config = {}
+        if not USE_REDIS_MTLS:
+            tls_config = {
+                'ssl_cert_reqs': config.get('redis', 'ssl_cert_reqs'),
+                'ssl_ca_certs': config.get('redis', 'ssl_ca_certs'),
+            }
+        else:
+            tls_config = {
+                'ssl_cert_reqs': config.get('redis', 'ssl_cert_reqs'),
+                'ssl_ca_certs': config.get('redis', 'ssl_ca_certs'),
+                'ssl_keyfile': config.get('redis', 'ssl_keyfile'),
+                'ssl_certfile': config.get('redis', 'ssl_certfile'),
+            }
+
+        if USE_REDIS_SENTINEL is False:
+            # The CONNECTION_POOL_KWARGS option is necessary for self-signed certs. For further details, please check
+            # https://github.com/jazzband/django-redis/issues/554#issuecomment-949498321
+            OPTIONS["CONNECTION_POOL_KWARGS"] = tls_config
+            OPTIONS["REDIS_CLIENT_KWARGS"].update(tls_config)
+        else:
+            OPTIONS["SENTINEL_KWARGS"].update(tls_config)
 
     if HAS_REDIS_PASSWORD:
         OPTIONS["PASSWORD"] = config.get('redis', 'password')
@@ -684,4 +735,4 @@ FILE_UPLOAD_MAX_SIZE_EMAIL_ATTACHMENT = 1024 * 1024 * config.getint("pretix_file
 FILE_UPLOAD_MAX_SIZE_EMAIL_AUTO_ATTACHMENT = 1024 * 1024 * config.getint("pretix_file_upload", "max_size_email_auto_attachment", fallback=1)
 FILE_UPLOAD_MAX_SIZE_OTHER = 1024 * 1024 * config.getint("pretix_file_upload", "max_size_other", fallback=10)
 
-DEFAULT_AUTO_FIELD = 'django.db.models.AutoField'  # sadly. we would prefer BigInt, and should use it for all new models but the migration will be hard
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

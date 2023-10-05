@@ -44,7 +44,7 @@ from i18nfield.forms import I18nFormField, I18nTextarea, I18nTextInput
 from pretix.base.email import get_available_placeholders
 from pretix.base.forms import I18nModelForm, PlaceholderValidator
 from pretix.base.forms.widgets import (
-    SplitDateTimePickerWidget, TimePickerWidget,
+    SplitDateTimePickerWidget, TimePickerWidget, format_placeholders_help_text,
 )
 from pretix.base.models import CheckinList, Item, Order, SubEvent
 from pretix.control.forms import CachedFileField, SplitDateTimeField
@@ -54,19 +54,14 @@ from pretix.plugins.sendmail.models import Rule
 
 class FormPlaceholderMixin:
     def _set_field_placeholders(self, fn, base_parameters):
-        phs = [
-            '{%s}' % p
-            for p in sorted(get_available_placeholders(self.event, base_parameters).keys())
-        ]
-        ht = _('Available placeholders: {list}').format(
-            list=', '.join(phs)
-        )
+        placeholders = get_available_placeholders(self.event, base_parameters)
+        ht = format_placeholders_help_text(placeholders, self.event)
         if self.fields[fn].help_text:
             self.fields[fn].help_text += ' ' + str(ht)
         else:
             self.fields[fn].help_text = ht
         self.fields[fn].validators.append(
-            PlaceholderValidator(phs)
+            PlaceholderValidator(['{%s}' % p for p in placeholders.keys()])
         )
 
 
@@ -76,11 +71,7 @@ class BaseMailForm(FormPlaceholderMixin, forms.Form):
     attachment = CachedFileField(
         label=_("Attachment"),
         required=False,
-        ext_whitelist=(
-            ".png", ".jpg", ".gif", ".jpeg", ".pdf", ".txt", ".docx", ".gif", ".svg",
-            ".pptx", ".ppt", ".doc", ".xlsx", ".xls", ".jfif", ".heic", ".heif", ".pages",
-            ".bmp", ".tif", ".tiff"
-        ),
+        ext_whitelist=settings.FILE_UPLOAD_EXTENSIONS_EMAIL_ATTACHMENT,
         help_text=_('Sending an attachment increases the chance of your email not arriving or being sorted into spam folders. We recommend only using PDFs '
                     'of no more than 2 MB in size.'),
         max_size=settings.FILE_UPLOAD_MAX_SIZE_EMAIL_ATTACHMENT
@@ -167,7 +158,7 @@ class WaitinglistMailForm(BaseMailForm):
 
 class OrderMailForm(BaseMailForm):
     recipients = forms.ChoiceField(
-        label=pgettext_lazy('sendmail_from', 'Send to'),
+        label=pgettext_lazy('sendmail_form', 'Send to'),
         widget=forms.RadioSelect,
         initial='orders',
         choices=[]
@@ -186,7 +177,7 @@ class OrderMailForm(BaseMailForm):
         required=False
     )
     checkin_lists = SafeModelMultipleChoiceField(queryset=CheckinList.objects.none(), required=False)  # overridden later
-    not_checked_in = forms.BooleanField(label=pgettext_lazy('sendmail_from', 'Restrict to recipients without check-in'), required=False)
+    not_checked_in = forms.BooleanField(label=pgettext_lazy('sendmail_form', 'Restrict to recipients without check-in'), required=False)
     subevent = forms.ModelChoiceField(
         SubEvent.objects.none(),
         label=pgettext_lazy('sendmail_form', 'Restrict to a specific event date'),
@@ -255,14 +246,14 @@ class OrderMailForm(BaseMailForm):
                 ('overdue', _('pending with payment overdue'))
             )
         self.fields['sendto'] = forms.MultipleChoiceField(
-            label=pgettext_lazy('sendmail_from', 'Restrict to orders with status'),
+            label=pgettext_lazy('sendmail_form', 'Restrict to orders with status'),
             widget=forms.CheckboxSelectMultiple(
                 attrs={'class': 'scrolling-multiple-choice no-search'}
             ),
             choices=choices
         )
         if not self.initial.get('sendto'):
-            self.initial['sendto'] = ['p', 'na', 'valid_if_pending']
+            self.initial['sendto'] = ['p', 'valid_if_pending']
         elif 'n' in self.initial['sendto']:
             self.initial['sendto'].append('pa')
             self.initial['sendto'].append('na')
@@ -280,11 +271,11 @@ class OrderMailForm(BaseMailForm):
                     'event': event.slug,
                     'organizer': event.organizer.slug,
                 }),
-                'data-placeholder': pgettext_lazy('sendmail_from', 'Restrict to recipients with check-in on list')
+                'data-placeholder': pgettext_lazy('sendmail_form', 'Restrict to recipients with check-in on list')
             }
         )
         self.fields['checkin_lists'].widget.choices = self.fields['checkin_lists'].choices
-        self.fields['checkin_lists'].label = pgettext_lazy('sendmail_from', 'Restrict to recipients with check-in on list')
+        self.fields['checkin_lists'].label = pgettext_lazy('sendmail_form', 'Restrict to recipients with check-in on list')
 
         if event.has_subevents:
             self.fields['subevent'].queryset = event.subevents.all()
@@ -309,10 +300,10 @@ class RuleForm(FormPlaceholderMixin, I18nModelForm):
     class Meta:
         model = Rule
 
-        fields = ['subject', 'template', 'attach_ical',
-                  'send_date', 'send_offset_days', 'send_offset_time',
-                  'include_pending', 'all_products', 'limit_products',
-                  'send_to', 'enabled']
+        fields = ['subject', 'template', 'attach_ical', 'send_date',
+                  'send_offset_days', 'send_offset_time', 'subevent',
+                  'all_products', 'limit_products', 'restrict_to_status',
+                  'checked_in_status', 'send_to', 'enabled']
 
         field_classes = {
             'subevent': SafeModelMultipleChoiceField,
@@ -337,6 +328,7 @@ class RuleForm(FormPlaceholderMixin, I18nModelForm):
                        'data-inverse-dependency': '#id_all_products'},
             ),
             'send_to': forms.RadioSelect,
+            'checked_in_status': forms.RadioSelect,
         }
 
     def __init__(self, *args, **kwargs):
@@ -358,6 +350,29 @@ class RuleForm(FormPlaceholderMixin, I18nModelForm):
 
         super().__init__(*args, **kwargs)
 
+        self.fields['subevent'] = forms.ModelChoiceField(
+            SubEvent.objects.none(),
+            label=pgettext_lazy('sendmail_form', 'Restrict to a specific event date'),
+            required=False,
+            empty_label=pgettext_lazy('subevent', 'All dates')
+        )
+
+        if self.event.has_subevents:
+            self.fields['subevent'].queryset = self.event.subevents.all()
+            self.fields['subevent'].widget = Select2(
+                attrs={
+                    'data-model-select2': 'event',
+                    'data-select2-url': reverse('control:event.subevents.select2', kwargs={
+                        'event': self.event.slug,
+                        'organizer': self.event.organizer.slug,
+                    }),
+                    'data-placeholder': pgettext_lazy('subevent', 'Date')
+                }
+            )
+            self.fields['subevent'].widget.choices = self.fields['subevent'].choices
+        else:
+            del self.fields['subevent']
+
         self.fields['limit_products'].queryset = Item.objects.filter(event=self.event)
 
         self.fields['schedule_type'] = forms.ChoiceField(
@@ -374,6 +389,25 @@ class RuleForm(FormPlaceholderMixin, I18nModelForm):
 
         self._set_field_placeholders('subject', ['event', 'order'])
         self._set_field_placeholders('template', ['event', 'order'])
+
+        choices = [(e, l) for e, l in Order.STATUS_CHOICE if e != 'n']
+        choices.insert(0, ('n__valid_if_pending', _('payment pending but already confirmed')))
+        choices.insert(0, ('n__not_pending_approval_and_not_valid_if_pending',
+                           _('payment pending (except unapproved or already confirmed)')))
+        choices.insert(0, ('n__pending_approval', _('approval pending')))
+        if not self.event.settings.get('payment_term_expire_automatically', as_type=bool):
+            choices.append(
+                ('p__overdue', _('pending with payment overdue'))
+            )
+        self.fields['restrict_to_status'] = forms.MultipleChoiceField(
+            label=pgettext_lazy('sendmail_from', 'Restrict to orders with status'),
+            widget=forms.CheckboxSelectMultiple(
+                attrs={'class': 'scrolling-multiple-choice no-search'}
+            ),
+            choices=choices
+        )
+        if not self.initial.get('restrict_to_status'):
+            self.initial['restrict_to_status'] = ['p', 'n__valid_if_pending']
 
     def clean(self):
         d = super().clean()
