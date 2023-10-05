@@ -259,6 +259,46 @@ DEFAULTS = {
             label=_("Gift card currency"),
         )
     },
+    'reusable_media_type_nfc_mf0aes': {
+        'default': 'False',
+        'type': bool,
+        'form_class': forms.BooleanField,
+        'serializer_class': serializers.BooleanField,
+        'form_kwargs': dict(
+            label=_("Active"),
+        )
+    },
+    'reusable_media_type_nfc_mf0aes_autocreate_giftcard': {
+        'default': 'False',
+        'type': bool,
+        'form_class': forms.BooleanField,
+        'serializer_class': serializers.BooleanField,
+        'form_kwargs': dict(
+            label=_("Automatically create a new gift card if a new chip is encoded"),
+        )
+    },
+    'reusable_media_type_nfc_mf0aes_autocreate_giftcard_currency': {
+        'default': 'EUR',
+        'type': str,
+        'form_class': forms.ChoiceField,
+        'serializer_class': serializers.ChoiceField,
+        'serializer_kwargs': dict(
+            choices=[(c.alpha_3, c.alpha_3 + " - " + c.name) for c in settings.CURRENCIES],
+        ),
+        'form_kwargs': dict(
+            choices=[(c.alpha_3, c.alpha_3 + " - " + c.name) for c in settings.CURRENCIES],
+            label=_("Gift card currency"),
+        )
+    },
+    'reusable_media_type_nfc_mf0aes_random_uid': {
+        'default': 'False',
+        'type': bool,
+        'form_class': forms.BooleanField,
+        'serializer_class': serializers.BooleanField,
+        'form_kwargs': dict(
+            label=_("Use UID protection feature of NFC chip"),
+        )
+    },
     'max_items_per_order': {
         'default': '10',
         'type': int,
@@ -901,9 +941,9 @@ DEFAULTS = {
         'form_kwargs': dict(
             label=_('Expiration delay'),
             help_text=_("The order will only actually expire this many days after the expiration date communicated "
-                        "to the customer. However, this will not delay beyond the \"last date of payments\" "
-                        "configured above, which is always enforced. The delay may also end on a weekend regardless "
-                        "of the other settings above."),
+                        "to the customer. If you select \"Only end payment terms on weekdays\" above, this will also "
+                        "be respected. However, this will not delay beyond the \"last date of payments\" "
+                        "configured above, which is always enforced."),
             # Every order in between the official expiry date and the delayed expiry date has a performance penalty
             # for the cron job, so we limit this feature to 30 days to prevent arbitrary numbers of orders needing
             # to be checked.
@@ -993,10 +1033,10 @@ DEFAULTS = {
             widget=forms.RadioSelect,
             choices=(
                 ('False', _('Do not generate invoices')),
-                ('admin', _('Only manually in admin panel')),
+                ('paid', _('Automatically after payment or when required by payment method')),
+                ('True', _('Automatically before payment for all created orders')),
                 ('user', _('Automatically on user request')),
-                ('True', _('Automatically for all created orders')),
-                ('paid', _('Automatically on payment or when required by payment method')),
+                ('admin', _('Only manually in admin panel')),
             ),
             help_text=_("Invoices will never be automatically generated for free orders.")
         )
@@ -2304,6 +2344,24 @@ You can view the payment information and the status of your order at
 Best regards,  
 Your {event} team"""))  # noqa: W291
     },
+    'mail_subject_order_payment_failed': {
+        'type': LazyI18nString,
+        'default': LazyI18nString.from_gettext(gettext_noop("Payment failed for your order: {code}")),
+    },
+    'mail_text_order_payment_failed': {
+        'type': LazyI18nString,
+        'default': LazyI18nString.from_gettext(gettext_noop("""Hello,
+
+your payment attempt for your order for {event} has failed.
+
+Your order is still valid and you can try to pay again using the same or a different payment method. Please complete your payment before {expire_date}.
+
+You can retry the payment and view the status of your order at
+{url}
+
+Best regards,  
+Your {event} team"""))  # noqa: W291
+    },
     'mail_subject_waiting_list': {
         'type': LazyI18nString,
         'default': LazyI18nString.from_gettext(gettext_noop("You have been selected from the waitinglist for {event}")),
@@ -2735,7 +2793,7 @@ Your {organizer} team"""))  # noqa: W291
         'form_class': ExtFileField,
         'form_kwargs': dict(
             label=_('Header image'),
-            ext_whitelist=(".png", ".jpg", ".gif", ".jpeg"),
+            ext_whitelist=settings.FILE_UPLOAD_EXTENSIONS_IMAGE,
             max_size=settings.FILE_UPLOAD_MAX_SIZE_IMAGE,
             help_text=_('If you provide a logo image, we will by default not show your event name and date '
                         'in the page header. By default, we show your logo with a size of up to 1140x120 pixels. You '
@@ -2778,7 +2836,7 @@ Your {organizer} team"""))  # noqa: W291
         'form_class': ExtFileField,
         'form_kwargs': dict(
             label=_('Header image'),
-            ext_whitelist=(".png", ".jpg", ".gif", ".jpeg"),
+            ext_whitelist=settings.FILE_UPLOAD_EXTENSIONS_IMAGE,
             max_size=settings.FILE_UPLOAD_MAX_SIZE_IMAGE,
             help_text=_('If you provide a logo image, we will by default not show your organization name '
                         'in the page header. By default, we show your logo with a size of up to 1140x120 pixels. You '
@@ -2818,7 +2876,7 @@ Your {organizer} team"""))  # noqa: W291
         'form_class': ExtFileField,
         'form_kwargs': dict(
             label=_('Social media image'),
-            ext_whitelist=(".png", ".jpg", ".gif", ".jpeg"),
+            ext_whitelist=settings.FILE_UPLOAD_EXTENSIONS_IMAGE,
             max_size=settings.FILE_UPLOAD_MAX_SIZE_IMAGE,
             help_text=_('This picture will be used as a preview if you post links to your ticket shop on social media. '
                         'Facebook advises to use a picture size of 1200 x 630 pixels, however some platforms like '
@@ -2839,7 +2897,7 @@ Your {organizer} team"""))  # noqa: W291
         'form_class': ExtFileField,
         'form_kwargs': dict(
             label=_('Logo image'),
-            ext_whitelist=(".png", ".jpg", ".gif", ".jpeg"),
+            ext_whitelist=settings.FILE_UPLOAD_EXTENSIONS_IMAGE,
             required=False,
             max_size=settings.FILE_UPLOAD_MAX_SIZE_IMAGE,
             help_text=_('We will show your logo with a maximal height and width of 2.5 cm.')
@@ -3657,14 +3715,10 @@ def validate_organizer_settings(organizer, settings_dict):
     # This is not doing anything for the time being.
     # But earlier we called validate_event_settings for the organizer, too - and that didn't do anything for
     # organizer-settings either.
-    #
-    # N.B.: When actually fleshing out this stub, adding it to the OrganizerUpdateForm should be considered.
-    """
-    if settings_dict.get('reusable_media_type_ntag_pretix1') and settings_dict.get('reusable_media_type_nfc_uid'):
+    if settings_dict.get('reusable_media_type_nfc_mf0aes') and settings_dict.get('reusable_media_type_nfc_uid'):
         raise ValidationError({
             'reusable_media_type_nfc_uid': _('This needs to be disabled if other NFC-based types are active.')
         })
-    """
 
 
 def global_settings_object(holder):

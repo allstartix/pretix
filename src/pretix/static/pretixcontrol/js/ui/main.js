@@ -123,6 +123,8 @@ var form_handlers = function (el) {
 
     // Vouchers
     el.find("#voucher-bulk-codes-generate").click(function () {
+        if (!$("#voucher-bulk-codes-num").get(0).reportValidity())
+            return;
         var num = $("#voucher-bulk-codes-num").val();
         var prefix = $('#voucher-bulk-codes-prefix').val();
         if (num != "") {
@@ -697,6 +699,38 @@ var form_handlers = function (el) {
     el.find("input[name*=question], select[name*=question]").change(questions_toggle_dependent);
     questions_toggle_dependent();
     questions_init_photos(el);
+
+    var lastFocusedInput;
+    $(document).on('focusin', 'input, textarea', function(e) {
+        lastFocusedInput = e.target;
+    }).on("click", function(e) {
+        if (e.target.classList.contains('content-placeholder')) {
+            var container = e.target.closest(".form-group");
+            if (!lastFocusedInput || !container.contains(lastFocusedInput)) {
+                lastFocusedInput = container.querySelector("input, textarea");
+                //lastFocusedInput.selectionStart = lastFocusedInput.selectionEnd = lastFocusedInput.value.length;
+            }
+            if (lastFocusedInput) {
+                var start = lastFocusedInput.selectionStart;
+                var end = lastFocusedInput.selectionEnd;
+                var v = lastFocusedInput.value;
+                var p = e.target.textContent;
+                var phStart = /\{\w*$/.exec(v.substring(0, start));
+                var phEnd = /^\w*\}/.exec(v.substring(end));
+                if (phStart) {
+                    start -= phStart[0].length
+                }
+                if (phEnd) {
+                    end += phEnd[0].length;
+                }
+
+                lastFocusedInput.value = v.substring(0, start) + p + v.substring(end);
+                lastFocusedInput.selectionStart = start;
+                lastFocusedInput.selectionEnd = start + p.length
+                lastFocusedInput.focus();
+            }
+        }
+    });
 };
 
 function setup_basics(el) {
@@ -782,7 +816,7 @@ function setup_basics(el) {
     el.find("input[data-toggle-table]").each(function (ev) {
         var $toggle = $(this);
         var $actionButtons = $(".batch-select-actions button", this.form);
-        var countLabels = $("<span></span>").appendTo($actionButtons);
+        var countLabels = $("<span></span>").appendTo($actionButtons.filter(function () { return !$(this).closest(".dropdown-menu").length }));
         var $table = $toggle.closest("table");
         var $selectAll = $table.find(".table-select-all");
         var $rows = $table.find("tbody tr");
