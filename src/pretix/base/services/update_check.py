@@ -115,8 +115,8 @@ def send_update_notification_email():
             gettext_noop(
                 'Hi!\n\nAn update is available for AllstarTix or for one of the plugins you installed in your '
                 'platform installation. Please click on the following link for more information:\n\n {url} \n\n'
-                'You can always find information on the latest updates on the eqilibriumsolutions.com blog:\n\n'
-                'https://eqilibriumsolutions.com/about/en/blog/'
+                'You can always find information on the latest updates on the allstartix.tech blog:\n\n'
+                'https://allstartix.tech/blog/'
                 '\n\nBest,\n\nyour AllstarTix developers'
             )
         ),

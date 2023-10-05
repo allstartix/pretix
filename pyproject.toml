@@ -146,10 +146,10 @@ requires = [
 ]
 
 [project.urls]
-homepage = "https://pretix.eu"
+homepage = "https://allstartix.tech"
 documentation = "https://docs.pretix.eu"
 repository = "https://github.com/pretix/pretix.git"
-changelog = "https://pretix.eu/about/en/blog/"
+changelog = "https://allstartix.tech/blog/"
 
 [tool.setuptools]
 include-package-data = true

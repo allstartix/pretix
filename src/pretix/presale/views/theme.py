@@ -33,7 +33,7 @@ def browserconfig_xml(request):
         <tile>
             <square150x150logo src="{}"/>
             <square310x310logo src="{}"/>
-            <TileColor>#213572</TileColor>
+            <TileColor>#30546e</TileColor>
         </tile>
     </msapplication>
 </browserconfig>""".format(
@@ -61,8 +61,8 @@ def webmanifest(request):
             "type": "image/png"
         }
     ],
-    "theme_color": "#213572",
-    "background_color": "#213572",
+    "theme_color": "#30546e",
+    "background_color": "#30546e",
     "display": "standalone"
 }""" % (
             static('pretixbase/img/icons/android-chrome-192x192.png'),

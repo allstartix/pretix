@@ -63,6 +63,8 @@ INSTALLED_APPS = [
     'pretix.plugins.manualpayment',
     'pretix.plugins.returnurl',
     'pretix.plugins.webcheckin',
+    'pertix.plugin.seating_plan',
+    'pretix.plugins.coinbase',
     'django_countries',
     'oauth2_provider',
     'phonenumber_field',
@@ -245,8 +247,8 @@ CURRENCY_PLACES = {
     'XPF': 0,
 }
 
-PRETIX_EMAIL_NONE_VALUE = 'none@well-known.pretix.eu'
-PRETIX_PRIMARY_COLOR = '#0C53C6'
+PRETIX_EMAIL_NONE_VALUE = 'none@well-known.allstartix.co.za'
+PRETIX_PRIMARY_COLOR = '#30546E'
 
 # pretix includes caching options for some special situations where full HTML responses are cached. This might be
 # stressful for some cache setups so it is enabled by default and currently can't be enabled through pretix.cfg

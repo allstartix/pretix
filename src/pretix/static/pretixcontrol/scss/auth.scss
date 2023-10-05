@@ -4,7 +4,8 @@
 @import "../../pretixbase/scss/_theme.scss";
 
 body {
-	background: #fbf7fc;
+	background: rgb(76,107,134);
+  background: linear-gradient(80deg, rgba(76,107,134,1) 0%, rgba(159,114,25,1) 49%, rgba(76,107,134,1) 100%);
 }
 
 footer {
@@ -14,7 +15,7 @@ footer {
 }
 
 .logo {
-    width: 350px;
+    width: 400px;
     margin: auto;
     display: block;
     margin-top: 10%;
@@ -26,7 +27,7 @@ footer {
 	@extend .well;
 
 	background: white;
-	box-shadow: 0 7px 14px 0 rgba(78, 50, 92, 0.1),0 3px 6px 0 rgba(0,0,0,.07);
+	box-shadow: 0 7px 14px 0 rgba(127, 127, 127, 0.94),0 3px 6px 0 rgba(0,0,0,.07);
 	border: 1px solid white;
 
 	max-width: 330px;

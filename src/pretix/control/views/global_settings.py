@@ -129,7 +129,7 @@ class LicenseCheckView(StaffMemberRequiredMixin, FormView):
         gs = GlobalSettingsObject()
         d.update(gs.settings.license_check_input)
         if not d:
-            d['source_notice'] = 'AllstarTix (AGPLv3 with additional terms): https://www.eqilibriumsolutions.com'
+            d['source_notice'] = 'AllstarTix (AGPLv3 with additional terms): https://allstartix.tech'
             seen = set()
             for entry_point in metadata.entry_points(group='pretix.plugin'):
                 if entry_point.dist.name not in seen:
