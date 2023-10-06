@@ -63,7 +63,7 @@ INSTALLED_APPS = [
     'pretix.plugins.manualpayment',
     'pretix.plugins.returnurl',
     'pretix.plugins.webcheckin',
-    'pretix.plugin.seating_plan',
+    'pretix.plugins.seating_plan',
     'pretix.plugins.coinbase',
     'django_countries',
     'oauth2_provider',
