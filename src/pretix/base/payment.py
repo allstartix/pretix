@@ -817,7 +817,7 @@ class BasePaymentProvider:
         """
         return ""
 
-    def order_change_allowed(self, order: Order) -> bool:
+    def order_change_allowed(self, order: Order, request: HttpRequest=None) -> bool:
         """
         Will be called to check whether it is allowed to change the payment method of
         an order to this one.
@@ -835,7 +835,12 @@ class BasePaymentProvider:
             return False
 
         if self.settings.get('_hidden', as_type=bool):
-            return False
+            if request:
+                hashes = set(request.session.get('pretix_unlock_hashes', [])) | set(order.meta_info_data.get('unlock_hashes', []))
+                if hashlib.sha256((self.settings._hidden_seed + self.event.slug).encode()).hexdigest() not in hashes:
+                    return False
+            else:
+                return False
 
         restricted_countries = self.settings.get('_restricted_countries', as_type=list)
         if restricted_countries:
@@ -844,7 +849,7 @@ class BasePaymentProvider:
             except InvoiceAddress.DoesNotExist:
                 pass
             else:
-                if str(ia.country) not in restricted_countries:
+                if str(ia.country) != '' and str(ia.country) not in restricted_countries:
                     return False
 
         if order.sales_channel not in self.settings.get('_restrict_to_sales_channels', as_type=list, default=['web']):
@@ -1306,9 +1311,7 @@ class GiftCardPayment(BasePaymentProvider):
 
     @property
     def public_name(self) -> str:
-        return str(self.settings.get("public_name", as_type=LazyI18nString)) or _(
-            "Gift card"
-        )
+        return str(self.settings.get("public_name", as_type=LazyI18nString) or _("Gift card"))
 
     @property
     def settings_form_fields(self):

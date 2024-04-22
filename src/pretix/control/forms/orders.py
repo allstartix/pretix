@@ -61,6 +61,7 @@ from pretix.base.models import (
     TaxRule,
 )
 from pretix.base.models.event import SubEvent
+from pretix.base.services.placeholders import FormPlaceholderMixin
 from pretix.base.services.pricing import get_price
 from pretix.control.forms import SplitDateTimeField
 from pretix.control.forms.widgets import Select2
@@ -151,10 +152,6 @@ class ForceQuotaConfirmationForm(forms.Form):
             del self.fields['force']
 
 
-class ConfirmPaymentForm(ForceQuotaConfirmationForm):
-    pass
-
-
 class ReactivateOrderForm(ForceQuotaConfirmationForm):
     pass
 
@@ -220,10 +217,11 @@ class DenyForm(forms.Form):
     )
 
 
-class MarkPaidForm(ConfirmPaymentForm):
+class MarkPaidForm(ForceQuotaConfirmationForm):
     send_email = forms.BooleanField(
         required=False,
         label=_('Notify customer by email'),
+        help_text=_('A mail will only be sent if the order is fully paid after this.'),
         initial=True
     )
     amount = forms.DecimalField(
@@ -240,9 +238,10 @@ class MarkPaidForm(ConfirmPaymentForm):
     )
 
     def __init__(self, *args, **kwargs):
+        payment = kwargs.pop('payment', None)
         super().__init__(*args, **kwargs)
         change_decimal_field(self.fields['amount'], self.instance.event.currency)
-        self.fields['amount'].initial = max(Decimal('0.00'), self.instance.pending_sum)
+        self.fields['amount'].initial = max(Decimal('0.00'), payment.amount if payment else self.instance.pending_sum)
 
 
 class ExporterForm(forms.Form):
@@ -265,12 +264,13 @@ class ExporterForm(forms.Form):
 class CommentForm(I18nModelForm):
     class Meta:
         model = Order
-        fields = ['comment', 'checkin_attention', 'custom_followup_at']
+        fields = ['comment', 'checkin_attention', 'checkin_text', 'custom_followup_at']
         widgets = {
             'comment': forms.Textarea(attrs={
                 'rows': 3,
                 'class': 'helper-width-100',
             }),
+            'checkin_text': forms.TextInput(),
             'custom_followup_at': DatePickerWidget(),
         }
 
@@ -704,6 +704,7 @@ class OrderMailForm(forms.Form):
         )
         self.fields['attach_invoices'].queryset = order.invoices.all()
         self._set_field_placeholders('message', ['event', 'order'])
+        self._set_field_placeholders('subject', ['event', 'order'])
 
 
 class OrderPositionMailForm(OrderMailForm):
@@ -719,6 +720,7 @@ class OrderPositionMailForm(OrderMailForm):
             initial=self.order.event.settings.mail_text_order_custom_mail.localize(self.order.locale),
         )
         self._set_field_placeholders('message', ['event', 'order', 'position'])
+        self._set_field_placeholders('subject', ['event', 'order'])
 
 
 class OrderRefundForm(forms.Form):
@@ -766,7 +768,7 @@ class OrderRefundForm(forms.Form):
         return data
 
 
-class EventCancelForm(forms.Form):
+class EventCancelForm(FormPlaceholderMixin, forms.Form):
     subevent = forms.ModelChoiceField(
         SubEvent.objects.none(),
         label=pgettext_lazy('subevent', 'Date'),
@@ -865,17 +867,6 @@ class EventCancelForm(forms.Form):
     )
     send_waitinglist_subject = forms.CharField()
     send_waitinglist_message = forms.CharField()
-
-    def _set_field_placeholders(self, fn, base_parameters):
-        placeholders = get_available_placeholders(self.event, base_parameters)
-        ht = format_placeholders_help_text(placeholders, self.event)
-        if self.fields[fn].help_text:
-            self.fields[fn].help_text += ' ' + str(ht)
-        else:
-            self.fields[fn].help_text = ht
-        self.fields[fn].validators.append(
-            PlaceholderValidator(['{%s}' % p for p in placeholders.keys()])
-        )
 
     def __init__(self, *args, **kwargs):
         self.event = kwargs.pop('event')

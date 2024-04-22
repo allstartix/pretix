@@ -54,6 +54,7 @@ from pretix.base.models import (
     User, WaitingListEntry,
 )
 from pretix.base.models.items import SubEventItem, SubEventItemVariation
+from pretix.base.reldate import RelativeDate, RelativeDateWrapper
 
 
 class EventTestMixin:
@@ -631,6 +632,30 @@ class ItemDisplayTest(EventTestMixin, SoupTest):
         self.assertNotIn("SOLD OUT", doc.select("section:nth-of-type(1)")[0].text)
         self.assertIn("Late-bird", doc.select("section:nth-of-type(1)")[0].text)
 
+    def test_hidden_if_item_available(self):
+        with scopes_disabled():
+            q = Quota.objects.create(event=self.event, name='Early-bird', size=10)
+            q2 = Quota.objects.create(event=self.event, name='Late-bird', size=10)
+            item = Item.objects.create(event=self.event, name='Early-bird ticket', default_price=12)
+            item2 = Item.objects.create(event=self.event, name='Late-bird ticket', default_price=12,
+                                        hidden_if_item_available=item)
+            q.items.add(item)
+            q2.items.add(item2)
+        self.event.settings.hide_sold_out = True
+
+        doc = self.get_doc('/%s/%s/' % (self.orga.slug, self.event.slug))
+        self.assertIn("Early-bird", doc.select("section:nth-of-type(1)")[0].text)
+        self.assertNotIn("SOLD OUT", doc.select("section:nth-of-type(1)")[0].text)
+        self.assertNotIn("Late-bird", doc.select("section:nth-of-type(1)")[0].text)
+
+        q.size = 0
+        q.save()
+
+        doc = self.get_doc('/%s/%s/' % (self.orga.slug, self.event.slug))
+        self.assertNotIn("Early-bird", doc.select("section:nth-of-type(1)")[0].text)
+        self.assertNotIn("SOLD OUT", doc.select("section:nth-of-type(1)")[0].text)
+        self.assertIn("Late-bird", doc.select("section:nth-of-type(1)")[0].text)
+
     def test_bundle_sold_out(self):
         with scopes_disabled():
             q = Quota.objects.create(event=self.event, name='Quota', size=2)
@@ -987,6 +1012,21 @@ class WaitingListTest(EventTestMixin, SoupTest):
 
     def test_disabled(self):
         self.event.settings.set('waiting_list_enabled', False)
+        response = self.client.get(
+            '/%s/%s/' % (self.orga.slug, self.event.slug)
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn('waitinglist', response.rendered_content)
+        response = self.client.get(
+            '/%s/%s/waitinglist/?item=%d' % (self.orga.slug, self.event.slug, self.item.pk + 1)
+        )
+        self.assertEqual(response.status_code, 302)
+
+    def test_auto_disable(self):
+        self.event.settings.set('waiting_list_enabled', True)
+        self.event.settings.waiting_list_auto_disable = RelativeDateWrapper(
+            RelativeDate(days=900, time=datetime.time(9, 0, 0), base_date_name='date_from', minutes=None, is_after=False)
+        )
         response = self.client.get(
             '/%s/%s/' % (self.orga.slug, self.event.slug)
         )
